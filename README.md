@@ -321,22 +321,29 @@ el aviso de Discord ya salió igual.
 **Transporte (importante):** Cloudflare bloquea los fetch de Worker a otros
 `*.workers.dev` (error 1042). Como bot y bus viven en la misma cuenta, el
 transporte correcto es el **Service Binding** `VANTS_BUS_SERVICE → vants-bus`
-(ya configurado en wrangler.toml y verificado contra el bus real: responde
-401 con `unknown_project`/`bad_signature` según corresponda — contrato HMAC
-intacto). Falta UN paso del admin del bus:
+(ya configurado en wrangler.toml). ✅ **COMPLETADO (28-10):**
 
-```bash
-# 1) el admin del bus registra el proyecto 'vantsbot' y te da su secreto HMAC
-# 2) tú lo cargas:
-npx wrangler secret put VANTS_BUS_SECRET
-# 3) compruébalo: /salud → bus.consumo ya NO dice deshabilitado
-```
+- El proyecto `vantsbot` está **registrado en el bus** (secret
+  `SECRET_VANTSBOT` creado en el worker `vants-bus` vía API) y el mismo
+  valor vive en `VANTS_BUS_SECRET` del bot → `/salud` muestra
+  `bus.secreto=true` y el cron de consumo activo.
+- **Canales configurados en D1** (`discord_channels`): resultados → #📋・resultados,
+  agenda/anuncios → #📢・anuncios, clips → #𝚃iktok-live, directos → #ｋick,
+  staff → #«𝙼oderator, logs → #vants-data (ajustable con `/vants canal`).
+- **Anuncio verificado de punta a punta**: `POST /bus-test` → embed de
+  "Partido terminado" entregado en #📋・resultados (HTTP 200 de Discord).
+- **Firma HMAC de `vantsbot` aceptada por el bus** (verificado con sonda:
+  pasa la autenticación; sin ella responde 401).
 
-Mientras falte el secreto todo lo del bus queda deshabilitado con mensaje
-claro en `/salud` (nada se rompe). Nota para el equipo: `vants-consumer-playvants`
-y `vants-faceit-webhook` siguen llamando al bus por su URL pública de
-workers.dev → sus subrequests caen con el mismo error 1042; la solución es la
-misma (service binding).
+⚠️ **Pendiente del lado del bus (infra del equipo):** su base Neon responde
+`500 password authentication failed for user 'authenticator'` en TODAS las
+operaciones (publicar/consumir, para todos los proyectos). El bot reintenta
+solo cada minuto: cuando el admin del bus arregle su `DATABASE_URL`, el
+consumo arranca sin tocar nada de este lado. Diagnóstico y arreglo propuesto
+(rol nuevo `vants_bus`, no destructivo) en `scripts/arreglar_bd_bus.py`.
+Nota para el equipo: `vants-consumer-playvants` y `vants-faceit-webhook`
+siguen llamando al bus por su URL pública de workers.dev → sus subrequests
+caen con el error 1042; la solución es la misma (service binding).
 
 Permisos del bot (los de tu captura): correctos — cubren kick/ban/timeout,
 gestionar canales y mensajes, y mencionar a todos. Recuerda que el rol del bot
