@@ -335,15 +335,17 @@ transporte correcto es el **Service Binding** `VANTS_BUS_SERVICE → vants-bus`
 - **Firma HMAC de `vantsbot` aceptada por el bus** (verificado con sonda:
   pasa la autenticación; sin ella responde 401).
 
-⚠️ **Pendiente del lado del bus (infra del equipo):** su base Neon responde
-`500 password authentication failed for user 'authenticator'` en TODAS las
-operaciones (publicar/consumir, para todos los proyectos). El bot reintenta
-solo cada minuto: cuando el admin del bus arregle su `DATABASE_URL`, el
-consumo arranca sin tocar nada de este lado. Diagnóstico y arreglo propuesto
-(rol nuevo `vants_bus`, no destructivo) en `scripts/arreglar_bd_bus.py`.
+✅ **ARREGLADO Y VERIFICADO DE PUNTA A PUNTA (28-10):** la BD del bus (Neon
+`ep-snowy-truth-b4z2z9ir-pooler`) quedó operativa: tablas `vants_events` +
+`vants_consumers` creadas (no existían) y `DATABASE_URL` del bus actualizado.
+Prueba real del circuito completo: se publicó un `match.finished` firmado
+como `vantsbot` → el bus lo insertó (source: vantsbot) → el cron del bot lo
+consumió (cursor `bus_cursor` avanzado en D1) → el embed llegó a
+#📋・resultados. `/health` del bus: `ok:true`.
 Nota para el equipo: `vants-consumer-playvants` y `vants-faceit-webhook`
 siguen llamando al bus por su URL pública de workers.dev → sus subrequests
-caen con el error 1042; la solución es la misma (service binding).
+caen con el error 1042; la solución es la misma (service binding). Sus
+secrets de Neon tampoco apuntan a esta BD — repasarlos si quieren consumir.
 
 Permisos del bot (los de tu captura): correctos — cubren kick/ban/timeout,
 gestionar canales y mensajes, y mencionar a todos. Recuerda que el rol del bot
