@@ -1,0 +1,121 @@
+# ============================================
+# vantsbot — Cloudflare Worker (interactions endpoint, sin gateway)
+# Base de datos: Cloudflare D1 (binding DB). NO Neon, NO Postgres.
+# ============================================
+name = "vantsbot"
+main = "src/index.js"
+compatibility_date = "2026-09-22"
+
+# Publicar en workers.dev (subdomain vants)
+workers_dev = true
+
+# node:crypto para la verificación Ed25519 de Discord
+# (mismo patrón verificado en producción de neon-functions/vantsbot)
+compatibility_flags = ["nodejs_compat"]
+
+# Cron del consumidor del VANTS-BUS: cada minuto drena los eventos nuevos del
+# ecosistema (match.finished/scheduled/canceled, torneos, clips, alertas...)
+# y los anuncia en los canales de /vants canal. También procesa la cola
+# bot_alerts (antes solo la tiraba CI con POST /tarea).
+# (OJO: [triggers] va DESPUÉS de las claves sueltas; una tabla TOML se come
+#  las claves que vengan debajo de ella)
+[triggers]
+crons = ["* * * * *"]
+
+[observability]
+enabled = true
+
+# ── Base de datos D1 ─────────────────────────────────────────────────────────
+# 1) Crear la base (una vez):
+#      npx wrangler d1 create vants-db
+# 2) Pegar el database_id que te devuelve aquí abajo.
+# 3) Crear las tablas (una vez):
+#      npx wrangler d1 execute vants-db --remote --file=schema.sql
+[[d1_databases]]
+binding = "DB"
+database_name = "vants-db"
+database_id = "11e5d82c-307b-44ba-9682-501d8df593d3"
+
+# ── Vars públicas (no secretas) ──────────────────────────────────────────────
+[vars]
+DISCORD_GUILD_ID = "1546641331927908472"   # VANTS GAMES
+DISCORD_APP_ID = "1564805627979632730"     # bot nuevo (Agente VANTS)
+VANTS_WEB_URL = "https://vants.vants.workers.dev"
+
+# VANTS-BUS (bus de eventos del ecosistema, desplegado en ESTA MISMA cuenta):
+#   consumir  → cron de arriba: eventos de FACEIT/web/launcher/agentes
+#               anunciados en Discord (canales resultados|agenda|clips)
+#   publicar  → los directos de Kick salen como stream.live a toda la org
+#
+# ⚠️ Transporte (hallazgo en producción con sonda): Cloudflare BLOQUEA los
+# fetch de Worker a otro *.workers.dev (error 1042). El transporte correcto
+# es el SERVICE BINDING de abajo (misma cuenta, sin 1042, headers HMAC
+# intactos — verificado con el bus respondiendo 401 unknown_project).
+# VANTS_BUS_URL queda para humans y clientes fuera de Cloudflare.
+#
+# Falta SOLO el secreto HMAC: el admin del bus debe registrar el proyecto
+# 'vantsbot' (hasta entonces el bus responde 401 unknown_project):
+#   npx wrangler secret put VANTS_BUS_SECRET
+VANTS_BUS_URL = "https://vants-bus.vants.workers.dev"
+VANTS_BUS_PROJECT = "vantsbot"
+
+# ── Service Binding al bus (transporte correcto Worker→Worker) ───────────────
+# (una tabla TOML termina la anterior: por esto va DESPUÉS de [vars])
+[[services]]
+binding = "VANTS_BUS_SERVICE"
+service = "vants-bus"
+
+# Ecosistema VANTS:
+#   AGENTE_HQ_URL  → web de los agentes (VANTS AI, Flask en Vercel).
+#                    /soporte pregunta habla con su POST /api/chat.
+#   KICK_USERNAME  → tu canal de Kick (para los avisos de directo)
+#   KICK_MENCION   → (opcional) mención al anunciar el directo,
+#                    ej: "@everyone" o "<@&ROLE_ID>"
+AGENTE_HQ_URL = "https://vants-ai.vercel.app"
+KICK_USERNAME = "vants"
+# KICK_MENCION = "@everyone"
+
+# AGENTE_URL → services/agent-service (el Agente VANTS, puerto 8082).
+# Sin ella, /agente avisa cómo configurarla. Secretos relacionados:
+#   AGENTE_TOKEN  (Bearer del agent-service, si está protegido)
+#   KICK_CLIENT_SECRET  (Client Secret de tu app en developers.kick.com,
+#                        para verificar la firma de los webhooks de directos)
+# AGENTE_URL = "https://mi-agente.example.com"
+#
+# Fábrica de software (/fabrica): el cerebro de cada etapa es configurable
+# con formato "proveedor:modelo". Por defecto:
+#   espec/build/aprobacion → Claude (si cargas ANTHROPIC_API_KEY) y si no
+#                            OpenAI Terra/Sol;  sol/ui → OpenAI Sol/Astra.
+# Cuando el agent-service tenga URL pública con /api/v1/fabrica, AGENTE_URL
+# actúa como cerebro de TODAS las etapas (el "plata": sandbox + GitHub).
+# FABRICA_ESPEC = "openai:gpt-6.1-terra"
+# FABRICA_BUILD = "anthropic:claude-sonnet-4-5"
+# FABRICA_SOL = "openai:gpt-6-sol"
+# FABRICA_UI = "openai:gpt-6-astra"
+# FABRICA_APROBACION = "anthropic:claude-opus-4-5"
+
+# ── SECRETOS (NUNCA en este archivo; se cargan con wrangler secret put) ─────
+#   npx wrangler secret put DISCORD_BOT_TOKEN    (token del bot nuevo)
+#   npx wrangler secret put DISCORD_PUBLIC_KEY   (Public Key del Developer Portal)
+#   npx wrangler secret put VANTS_BOT_SECRET     (32+ caracteres; protege /setup,
+#                                                 /tarea, /kick-test, /evento-discord, /avisar)
+#   npx wrangler secret put SUPERVISOR_DM_ID     (opcional: tu user id para DMs del puente)
+#   npx wrangler secret put KICK_CLIENT_SECRET   (webhooks de directos de Kick)
+#   npx wrangler secret put AGENTE_TOKEN         (si el agent-service exige Bearer)
+#   npx wrangler secret put OPENAI_API_KEY       (cuenta de servicio de la org:
+#                                                 alimenta /ia → Sol, Astra, Terra,
+#                                                 Luna, nano y mini. La org necesita
+#                                                 créditos en platform.openai.com)
+#   npx wrangler secret put ANTHROPIC_API_KEY    (cerebro Opus/Sonnet de /fabrica
+#                                                 Y RESPALDO automático de /ia:
+#                                                 si OpenAI no tiene créditos,
+#                                                 responde Claude — el plan del
+#                                                 dueño trabaja a diario sin
+#                                                 recargar, así la IA nunca falla)
+#   npx wrangler secret put VANTS_BUS_SECRET     (identidad 'vantsbot' en el
+#                                                 VANTS-BUS: consumir eventos
+#                                                 del ecosistema y publicar
+#                                                 los directos de Kick)
+
+# ── Dominio propio (opcional, cuando la zona esté activa) ────────────────────
+# routes = [ { pattern = "bot.vantsgg.com", custom_domain = true } ]

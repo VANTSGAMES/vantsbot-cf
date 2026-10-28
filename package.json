@@ -1,0 +1,16 @@
+{
+  "name": "vantsbot-cf",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Bot VANTS para Discord como Cloudflare Worker (interactions endpoint) con base de datos D1",
+  "scripts": {
+    "deploy": "wrangler deploy",
+    "dev": "wrangler dev",
+    "tail": "wrangler tail",
+    "schema": "wrangler d1 execute vants-db --remote --file=schema.sql"
+  },
+  "devDependencies": {
+    "wrangler": "^4.0.0"
+  }
+}
