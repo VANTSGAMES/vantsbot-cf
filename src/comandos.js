@@ -377,8 +377,10 @@ export async function soporte(env, body) {
   return { flags: 64, embeds: [e] };
 }
 
-// ── /vincular riot ───────────────────────────────────────────────────────────
-const RIOT_REGEX = /^[^\s#]{3,16}#[A-Za-z0-9]{3,5}$/;
+// ── /vincular riot ───────────────────────────────────────────────────────────────────────────
+// El gameName de Riot permite ESPACIOS (3-16 chars) — ej real: "Kick Feispla#000".
+// Por eso el nombre es [^#] (todo menos el separador); el trim() del input cubre los bordes.
+const RIOT_REGEX = /^[^#]{3,16}#[A-Za-z0-9]{3,5}$/;
 
 export async function vincularRiot(env, body) {
   const data = body?.data ?? {};
@@ -389,7 +391,7 @@ export async function vincularRiot(env, body) {
   const yo = body.member?.user ?? body.user;
 
   if (!RIOT_REGEX.test(handle)) {
-    return { flags: 64, content: '❌ Formato inválido. Usa `Nombre#TAG` (ej: Player#1234)' };
+    return { flags: 64, content: '❌ Formato inválido. Usa `Nombre#TAG` (ej: Player#1234 o Kick Feispla#000)' };
   }
 
   // Alta automática: si aún no existe ficha en VANTS para este Discord, se crea

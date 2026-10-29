@@ -327,6 +327,15 @@ console.assert(j.config.fabrica && j.config.fabrica.cerebro_openai === false, 's
   );
   j = await r.json();
   console.assert(String(j?.data?.content).includes('ya está vinculado'), 'vincular duplicado mal');
+  // 14d) nombre Riot CON ESPACIO (gameName real, ej: "Kick Feispla#000") → acepta
+  const insertsAntes = inserts;
+  r = await handler(
+    req({ type: 2, data: { name: 'vincular', options: [{ name: 'riot', options: [{ name: 'nombre', value: 'Kick Feispla#000' }] }] }, member: { user: { id: '999', username: 'owner2' }, permissions: '0' } }),
+    envVin, {},
+  );
+  j = await r.json();
+  console.assert(j?.data?.embeds?.[0]?.title?.includes('vinculada'), 'vincular con espacio mal');
+  console.assert(inserts === insertsAntes + 1, 'vincular con espacio no insertó player');
 }
 
 // ── 15) VANTS-BUS: sin configurar todo degrada con mensajes claros ──────────
