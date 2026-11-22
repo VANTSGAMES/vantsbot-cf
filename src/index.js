@@ -34,6 +34,7 @@ import { kickHandler, kickPrueba } from './kick.js';
 import { cicloBus, busPrueba } from './bus.js';
 import { ia } from './openai.js';
 import { fabricaComando, fabricaBoton } from './fabrica.js';
+import { rutasBanterHub, resumenBanter } from './banterHub.js';
 
 const PRESUPUESTO_MS = 2200; // Discord exige respuesta < 3s; margen para el followup
 
@@ -240,6 +241,7 @@ async function salud(env) {
         roles_admin: 'tabla roles_admin en D1 (/vants rol agregar|quitar|lista)',
         ocultos_para_miembros: 'vants, warn, kick, ban, mute, unmute, clear, lock, unlock, informe, fabrica, agente',
       },
+      banter: await resumenBanter(env),
     },
     tablas,
   });
@@ -253,6 +255,10 @@ export function construir(sobre = {}) {
     const ruta = new URL(request.url).pathname.replace(/\/+$/, '') || '/';
 
     if (request.method === 'GET' && (ruta === '/' || ruta === '/salud')) return salud(env);
+
+    // Motor Banter + NitroPay /ads.txt + VANTS-Clipper -> D1 + VANTS-BUS
+    const rBanter = await rutasBanterHub(request, env, ruta, { fetchImpl: sobre.fetchImpl || fetch });
+    if (rBanter) return rBanter;
 
     // Webhook de Kick (app del dueño en developers.kick.com): auth por firma
     // HMAC con KICK_CLIENT_SECRET, no x-vants-bot.

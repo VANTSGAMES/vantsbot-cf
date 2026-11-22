@@ -40,7 +40,12 @@ database_id = "11e5d82c-307b-44ba-9682-501d8df593d3"
 [vars]
 DISCORD_GUILD_ID = "1546641331927908472"   # VANTS GAMES
 DISCORD_APP_ID = "1564805627979632730"     # bot nuevo (Agente VANTS)
-VANTS_WEB_URL = "https://vants.vants.workers.dev"
+VANTS_WEB_URL = "https://vants.cc"
+AGENTE_URL = "https://vants-agent.vants.workers.dev"
+AGENTE_HQ_URL = "https://vants-ai.vercel.app"
+KICK_USERNAME = "feispla"
+BANTER_SHEET_ID = "1i0t2hRSAO4WT7nKlK3rzgsx4oulmrYmpTqIe6CA5ozU"
+NITROPAY_SITE_ID = ""
 
 # VANTS-BUS (bus de eventos del ecosistema, desplegado en ESTA MISMA cuenta):
 #   consumir  → cron de arriba: eventos de FACEIT/web/launcher/agentes
@@ -52,27 +57,18 @@ VANTS_WEB_URL = "https://vants.vants.workers.dev"
 # es el SERVICE BINDING de abajo (misma cuenta, sin 1042, headers HMAC
 # intactos — verificado con el bus respondiendo 401 unknown_project).
 # VANTS_BUS_URL queda para humans y clientes fuera de Cloudflare.
-#
-# Falta SOLO el secreto HMAC: el admin del bus debe registrar el proyecto
-# 'vantsbot' (hasta entonces el bus responde 401 unknown_project):
-#   npx wrangler secret put VANTS_BUS_SECRET
 VANTS_BUS_URL = "https://vants-bus.vants.workers.dev"
 VANTS_BUS_PROJECT = "vantsbot"
 
-# ── Service Binding al bus (transporte correcto Worker→Worker) ───────────────
+# ── Service Bindings (transporte Worker→Worker sin error 1042) ───────────────
 # (una tabla TOML termina la anterior: por esto va DESPUÉS de [vars])
 [[services]]
 binding = "VANTS_BUS_SERVICE"
 service = "vants-bus"
 
-# Ecosistema VANTS:
-#   AGENTE_HQ_URL  → web de los agentes (VANTS AI, Flask en Vercel).
-#                    /soporte pregunta habla con su POST /api/chat.
-#   KICK_USERNAME  → tu canal de Kick (para los avisos de directo)
-#   KICK_MENCION   → (opcional) mención al anunciar el directo,
-#                    ej: "@everyone" o "<@&ROLE_ID>"
-AGENTE_HQ_URL = "https://vants-ai.vercel.app"
-KICK_USERNAME = "vants"
+[[services]]
+binding = "VANTS_INT_SERVICE"
+service = "vants-integraciones"
 # KICK_MENCION = "@everyone"
 
 # AGENTE_URL → services/agent-service (el Agente VANTS, puerto 8082).

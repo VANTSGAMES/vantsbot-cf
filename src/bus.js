@@ -133,6 +133,10 @@ const MAPA_EVENTOS = {
   'anticheat.passed': { canales: ['registros'], color: 0x57f287, emoji: '🛡️', titulo: 'Anticheat OK' },
   'post.generated': { canales: ['anuncios'], color: 0x5865f2, emoji: '🤖', titulo: 'Post generado' },
   'stream.live': { canales: ['directos', 'anuncios'], color: 0x53fc18, emoji: '🔴', titulo: 'EN DIRECTO' },
+  'banter.user_registered': { canales: ['registros', 'anuncios'], color: 0xff0d2e, emoji: '👋', titulo: 'Nuevo usuario en Banter' },
+  'banter.request_created': { canales: ['staff', 'registros'], color: 0xfaa61a, emoji: '📥', titulo: 'Nueva solicitud Banter' },
+  'banter.nitro_activated': { canales: ['registros', 'anuncios'], color: 0xeb459e, emoji: '⚡', titulo: 'Suscripción Banter Nitro' },
+  'release.published': { canales: ['anuncios'], color: 0x57f287, emoji: '📦', titulo: 'Nueva versión disponible (WinGet)' },
 };
 const DEFECTO_EVENTO = { canales: ['anuncios'], color: ROJO, emoji: '📡', titulo: '' };
 
