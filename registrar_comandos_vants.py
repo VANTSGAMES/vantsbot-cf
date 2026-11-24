@@ -139,7 +139,7 @@ def peticion(metodo: str, url: str, token: str, payload=None):
     req = urllib.request.Request(url, data=datos, method=metodo, headers={
         "Authorization": f"Bot {token}",
         "Content-Type": "application/json",
-        "User-Agent": "VANTS-Bot (https://vants.vants.workers.dev, 1.0)",
+        "User-Agent": "VANTS-Bot (https://vants.cc, 1.0)",
     })
     try:
         with urllib.request.urlopen(req, timeout=20) as resp:

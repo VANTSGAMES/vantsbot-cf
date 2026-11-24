@@ -464,7 +464,7 @@ export async function vincularRiot(env, body) {
     campo(e, '🎉 Bienvenido', 'Tu ficha de jugador se creó al momento con este comando. Ya formas parte del circuito.');
   }
   campo(e, '📌 Siguiente paso', 'Usa `/link` del bot **ValoTracker** con el mismo Riot ID.');
-  e.footer = { text: 'VANTS · vants.vants.workers.dev' };
+  e.footer = { text: 'VANTS · vants.cc' };
   return {
     flags: 64,
     embeds: [e],
