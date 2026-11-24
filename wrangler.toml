@@ -57,7 +57,7 @@ NITROPAY_SITE_ID = ""
 # es el SERVICE BINDING de abajo (misma cuenta, sin 1042, headers HMAC
 # intactos — verificado con el bus respondiendo 401 unknown_project).
 # VANTS_BUS_URL queda para humans y clientes fuera de Cloudflare.
-VANTS_BUS_URL = "https://vants-bus.vants.workers.dev"
+VANTS_BUS_URL = "https://bus.vants.cc"
 VANTS_BUS_PROJECT = "vantsbot"
 
 # ── Service Bindings (transporte Worker→Worker sin error 1042) ───────────────

@@ -8,7 +8,7 @@ import { timingSafeEqual, createPublicKey, verify as cryptoVerify } from 'node:c
 export const API = 'https://discord.com/api/v10';
 export const ROJO = 0xe30613; // color de marca VANTS
 export const GUILD_ID_DEFECTO = '1546641331927908472'; // VANTS GAMES
-export const WEB_URL_DEFECTO = 'https://vants.vants.workers.dev';
+export const WEB_URL_DEFECTO = 'https://vants.cc';
 
 export const dormir = (ms) => new Promise((r) => setTimeout(r, ms));
 
@@ -64,7 +64,7 @@ export function autorizado(header, secret) {
 export async function dapi(token, method, path, payload, razon) {
   const headers = {
     'Content-Type': 'application/json',
-    'User-Agent': 'VANTS-Bot (https://vants.vants.workers.dev, 1.0)',
+    'User-Agent': 'VANTS-Bot (https://vants.cc, 1.0)',
   };
   if (token) headers.Authorization = `Bot ${token}`;
   if (razon) headers['X-Audit-Log-Reason'] = encodeURIComponent(String(razon).slice(0, 400));

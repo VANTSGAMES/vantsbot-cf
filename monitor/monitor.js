@@ -5,7 +5,7 @@ const CHECKS = [
   {
     "id": "bot",
     "label": "Bot Discord (salud)",
-    "url": "https://vantsbot.vants.workers.dev/salud",
+    "url": "https://bot.vants.cc/salud",
     "markers": [
       "\"ok\":true"
     ]
@@ -13,7 +13,7 @@ const CHECKS = [
   {
     "id": "bus",
     "label": "VANTS-BUS (salud)",
-    "url": "https://vants-bus.vants.workers.dev/health",
+    "url": "https://bus.vants.cc/health",
     "markers": [
       "\"ok\":true"
     ]
@@ -29,7 +29,7 @@ async function httpCheck(c) {
     const r = await fetch(c.url, {
       signal: ctl.signal,
       redirect: 'follow',
-      headers: { 'User-Agent': 'Mozilla/5.0 (compatible; VANTS-Monitor/1.0; +https://vants.vants.workers.dev)' },
+      headers: { 'User-Agent': 'Mozilla/5.0 (compatible; VANTS-Monitor/1.0; +https://vants.cc)' },
     });
     clearTimeout(t);
     const ms = Date.now() - t0;

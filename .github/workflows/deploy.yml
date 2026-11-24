@@ -37,4 +37,4 @@ jobs:
           fi
           npx -y wrangler@4 deploy
           sleep 5
-          curl -fsS https://vantsbot.vants.workers.dev/banter/estado
+          curl -fsS https://bot.vants.cc/banter/estado
