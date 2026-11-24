@@ -25,6 +25,8 @@ jobs:
       - name: Ejecutar monitor
         env:
           PAGERDUTY_ROUTING_KEY: ${{ secrets.PAGERDUTY_ROUTING_KEY }}
+          DD_API_KEY: ${{ secrets.DD_API_KEY }}
+          DD_SITE: datadoghq.com
         run: |
           set +e
           node monitor/monitor.js 2>&1 | tee monitor-output.log

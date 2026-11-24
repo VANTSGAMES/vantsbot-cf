@@ -89,6 +89,57 @@ async function enviarPagerDuty(action, summary, customDetails = {}) {
   }
 }
 
+async function enviarDatadog(resultados, fallos) {
+  const ddKey = String(process.env.DD_API_KEY || '').trim();
+  if (!ddKey) return;
+  const site = String(process.env.DD_SITE || 'datadoghq.com').trim();
+  const nowSec = Math.floor(Date.now() / 1000);
+  try {
+    const series = [];
+    for (const [id, r] of Object.entries(resultados)) {
+      series.push(
+        {
+          metric: 'vants.monitor.up',
+          type: 3,
+          points: [{ timestamp: nowSec, value: r.ok ? 1 : 0 }],
+          tags: [`env:production`, `service:${id}`, `status:${r.status}`],
+        },
+        {
+          metric: 'vants.monitor.latency_ms',
+          type: 3,
+          points: [{ timestamp: nowSec, value: Number(r.ms || 0) }],
+          tags: [`env:production`, `service:${id}`],
+        },
+      );
+    }
+    const rMetrics = await fetch(`https://api.${site}/api/v2/series`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'DD-API-KEY': ddKey },
+      body: JSON.stringify({ series }),
+    });
+    const rLogs = await fetch(`https://http-intake.logs.${site}/api/v2/logs`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'DD-API-KEY': ddKey },
+      body: JSON.stringify([
+        {
+          ddsource: 'vants-monitor',
+          ddtags: 'env:production,org:vantsgames',
+          hostname: 'vants.cc',
+          service: 'vants-ecosystem-monitor',
+          status: fallos.length ? 'error' : 'info',
+          message: fallos.length
+            ? `[ALERT] DOWN — ${fallos.join('; ')}`
+            : `[OK] Todos los servicios VANTS operativos (${Object.keys(resultados).length}/4)`,
+          resultados,
+        },
+      ]),
+    });
+    console.log(`[Datadog] metrics -> HTTP ${rMetrics.status} | logs -> HTTP ${rLogs.status}`);
+  } catch (e) {
+    console.error('[Datadog] error al enviar telemetría:', String(e?.message || e));
+  }
+}
+
 (async () => {
   const fallos = [];
   const resultados = {};
@@ -98,6 +149,7 @@ async function enviarPagerDuty(action, summary, customDetails = {}) {
     console.log((r.ok ? 'OK  ' : 'FALLA ') + (c.label || c.id) + '  ' + c.url + '  ->  ' + r.status + '  ' + r.ms + 'ms' + (r.ok ? '' : '  :: ' + r.detalle));
     if (!r.ok) fallos.push((c.label || c.id) + ' (' + (r.detalle || 'HTTP ' + r.status) + ')');
   }
+  await enviarDatadog(resultados, fallos);
   if (fallos.length) {
     const msg = '[ALERT] DOWN — falla: ' + fallos.join('; ');
     console.error(msg);
