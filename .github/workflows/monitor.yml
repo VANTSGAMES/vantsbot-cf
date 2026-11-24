@@ -23,6 +23,8 @@ jobs:
           node-version: 20
 
       - name: Ejecutar monitor
+        env:
+          PAGERDUTY_ROUTING_KEY: ${{ secrets.PAGERDUTY_ROUTING_KEY }}
         run: |
           set +e
           node monitor/monitor.js 2>&1 | tee monitor-output.log

@@ -406,16 +406,59 @@ export function construir(sobre = {}) {
 // scheduled() dispara el [triggers] de wrangler.toml (cada minuto):
 //   1) cicloBus      → eventos del ecosistema VANTS → anuncios en Discord
 //   2) cicloTarea    → drena la cola bot_alerts (antes solo la tiraba CI)
+async function notificarPagerDuty(env, summary, dedupKey = 'vantsbot-runtime-error', details = {}) {
+  const key = String((env && env.PAGERDUTY_ROUTING_KEY) || '').trim();
+  if (!key) return;
+  try {
+    await fetch('https://events.pagerduty.com/v2/enqueue', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        routing_key: key,
+        event_action: 'trigger',
+        dedup_key: dedupKey,
+        payload: {
+          summary: String(summary).slice(0, 1024),
+          source: 'bot.vants.cc (vantsbot Cloudflare Worker)',
+          severity: 'error',
+          custom_details: details,
+        },
+      }),
+    });
+  } catch {
+    /* no bloquear el worker si PagerDuty no responde */
+  }
+}
+
 export default {
   async fetch(request, env, ctx) {
-    return construir()(request, env, ctx);
+    try {
+      return await construir()(request, env, ctx);
+    } catch (e) {
+      const p = notificarPagerDuty(env, `[vantsbot] Error no controlado en fetch: ${String(e?.message || e)}`, 'vantsbot-fetch-error', {
+        url: request?.url,
+        method: request?.method,
+      });
+      if (ctx && typeof ctx.waitUntil === 'function') ctx.waitUntil(p);
+      throw e;
+    }
   },
   async scheduled(controller, env, ctx) {
     const trabajo = (async () => {
       let bus = null;
       let tarea = null;
-      try { bus = await cicloBus(env); } catch (e) { bus = { error: String(e).slice(0, 200) }; }
-      try { tarea = await cicloTarea(env); } catch (e) { tarea = { error: String(e).slice(0, 200) }; }
+      try {
+        bus = await cicloBus(env);
+      } catch (e) {
+        bus = { error: String(e).slice(0, 200) };
+        await notificarPagerDuty(env, `[vantsbot] Fallo en cron cicloBus: ${bus.error}`, 'vantsbot-cron-bus', bus);
+      }
+      try {
+        tarea = await cicloTarea(env);
+      } catch (e) {
+        tarea = { error: String(e).slice(0, 200) };
+        await notificarPagerDuty(env, `[vantsbot] Fallo en cron cicloTarea: ${tarea.error}`, 'vantsbot-cron-tarea', tarea);
+      }
       console.log('[vantsbot] cron:', JSON.stringify({ bus, tarea: { enviadas: tarea?.enviadas, errores: Array.isArray(tarea?.errores) ? tarea.errores.length : 0 } }));
     })();
     if (ctx && typeof ctx.waitUntil === 'function') ctx.waitUntil(trabajo);
