@@ -15,20 +15,25 @@
 // 'directos' (fallback 'anuncios') con botón al canal. Dedupe por
 // X-Kick-Event-Id en web_events (D1) para no repetir en reintentos.
 // ============================================
-import { createHmac } from 'node:crypto';
+import { createHmac, timingSafeEqual } from 'node:crypto';
 import { txt, fmtFecha, dapi, dbRun, dbFirst } from './util.js';
 import { publicarBus } from './bus.js';
 
 const VERDE_KICK = 0x53fc18;
 
 // HMAC-SHA256 hex del body crudo con el Client Secret (formato Kick;
-// se acepta también con prefijo "sha256=" por si cambia la convención)
+// se acepta también con prefijo "sha256=" por si cambia la convención).
+// Fail-closed: sin secret configurado se rechaza la petición.
 function firmaValida(raw, firmaHeader, secret) {
-  if (!secret) return true; // sin secret configurado no se puede verificar
-  if (!firmaHeader) return false;
+  if (!secret || !firmaHeader) return false;
   const esperada = createHmac('sha256', secret).update(raw).digest('hex');
   const recibida = String(firmaHeader).replace(/^sha256=/i, '').toLowerCase();
-  return recibida === esperada;
+  if (recibida.length !== esperada.length) return false;
+  try {
+    return timingSafeEqual(Buffer.from(recibida, 'utf8'), Buffer.from(esperada, 'utf8'));
+  } catch {
+    return false;
+  }
 }
 
 export async function kickHandler(request, env) {
