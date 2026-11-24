@@ -182,8 +182,16 @@ async function cicloTarea(env) {
   return out;
 }
 
-// ── /salud: diagnóstico sin secretos ─────────────────────────────────────────
-async function salud(env) {
+// ── /salud: diagnóstico sin secretos (detalles solo con x-vants-bot) ─────────
+async function salud(env, request) {
+  const esAdmin = request && autorizado(request.headers?.get?.('x-vants-bot'), env.VANTS_BOT_SECRET);
+  if (!esAdmin) {
+    return json({
+      ok: true,
+      fn: 'vantsbot-worker',
+      db: 'Cloudflare D1',
+    });
+  }
   const token = String(env.DISCORD_BOT_TOKEN ?? '');
   const tablas = {};
   for (const t of ['players', 'leaderboard', 'tournaments', 'events', 'discord_channels', 'bot_alerts', 'mod_logs', 'web_events', 'fabrica_corridas', 'fabrica_pasos', 'roles_admin', 'bus_estado']) {
@@ -254,7 +262,7 @@ export function construir(sobre = {}) {
   return async function handler(request, env, ctx) {
     const ruta = new URL(request.url).pathname.replace(/\/+$/, '') || '/';
 
-    if (request.method === 'GET' && (ruta === '/' || ruta === '/salud')) return salud(env);
+    if (request.method === 'GET' && (ruta === '/' || ruta === '/salud')) return salud(env, request);
 
     // Motor Banter + NitroPay /ads.txt + VANTS-Clipper -> D1 + VANTS-BUS
     const rBanter = await rutasBanterHub(request, env, ruta, { fetchImpl: sobre.fetchImpl || fetch });

@@ -113,5 +113,5 @@ service = "vants-integraciones"
 #                                                 del ecosistema y publicar
 #                                                 los directos de Kick)
 
-# ── Dominio propio (opcional, cuando la zona esté activa) ────────────────────
-# routes = [ { pattern = "bot.vantsgg.com", custom_domain = true } ]
+# ── Dominio oficial de producción ────────────────────────────────────────────
+routes = [ { pattern = "bot.vants.cc", custom_domain = true } ]

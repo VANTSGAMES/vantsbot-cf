@@ -37,4 +37,5 @@ jobs:
           fi
           npx -y wrangler@4 deploy
           sleep 5
-          curl -fsS https://bot.vants.cc/banter/estado
+          curl -fsS -A "Mozilla/5.0 (compatible; VANTSHealthCheck/1.0; +https://vants.cc)" https://bot.vants.cc/banter/estado
+          curl -fsS -A "Mozilla/5.0 (compatible; VANTSHealthCheck/1.0; +https://vants.cc)" https://bot.vants.cc/salud
