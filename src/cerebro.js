@@ -19,7 +19,7 @@ export async function chatAnthropic(key, modelo, sistema, usuario, maxTokens = 1
       'content-type': 'application/json',
       'x-api-key': String(key),
       'anthropic-version': '2023-06-01',
-      'User-Agent': 'VANTS-Bot (https://vants.vants.workers.dev, 1.0)',
+      'User-Agent': 'VANTS-Bot (https://vants.cc, 1.0)',
     },
     body: JSON.stringify({
       model: modelo,
