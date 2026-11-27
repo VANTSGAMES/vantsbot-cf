@@ -11,6 +11,7 @@
 import {
   ROJO, txt, dapi, abrirDM, dbAll, dbFirst, dbRun,
   permisosDe, tienePerm, esStaff, PERM, ahoraISO, appIdDeToken,
+  embedBase, campo,
 } from './util.js';
 
 const optVal = (body, n) => (body?.data?.options ?? []).find((o) => o.name === n)?.value;

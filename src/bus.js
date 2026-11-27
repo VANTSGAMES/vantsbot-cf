@@ -158,6 +158,9 @@ function camposDinamicos(data) {
 
 // Anuncia UN evento del bus en Discord. Devuelve {enviado, canal?, motivo?}
 export async function anunciarEventoBus(env, ev) {
+  if (ev?.type === 'stream.live' && ev?.source === 'vantsbot') {
+    return { enviado: false, motivo: 'ya_anunciado_en_origen' };
+  }
   const token = String(env.DISCORD_BOT_TOKEN ?? '');
   const tipo = String(ev?.type ?? '');
   const mapa = MAPA_EVENTOS[tipo] ?? DEFECTO_EVENTO;

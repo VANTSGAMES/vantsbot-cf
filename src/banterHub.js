@@ -153,6 +153,15 @@ export async function resumenBanter(env) {
   return out;
 }
 
+function secretIgual(a, b) {
+  const sa = String(a || '');
+  const sb = String(b || '');
+  if (!sa || sa.length !== sb.length) return false;
+  let diff = 0;
+  for (let i = 0; i < sa.length; i++) diff |= sa.charCodeAt(i) ^ sb.charCodeAt(i);
+  return diff === 0;
+}
+
 export async function rutasBanterHub(req, env, ruta, { fetchImpl = fetch } = {}) {
   const m = req.method;
 
@@ -365,7 +374,7 @@ export async function rutasBanterHub(req, env, ruta, { fetchImpl = fetch } = {})
     const authBot = autorizado(req.headers.get('x-vants-bot'), env.VANTS_BOT_SECRET);
     const clipperSec = String((env && env.CLIPPER_SECRET) || '').trim();
     const hdrClipper = String(req.headers.get('x-clipper-secret') || '').trim();
-    const authClipper = Boolean(clipperSec && hdrClipper && hdrClipper === clipperSec);
+    const authClipper = secretIgual(hdrClipper, clipperSec);
     if (!authBot && !authClipper) {
       return jsonCors(req, { ok: false, error: 'unauthorized' }, 401);
     }
