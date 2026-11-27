@@ -23,6 +23,7 @@ jobs:
           node --check src/index.js
           node --check src/banterHub.js
           node --check src/bus.js
+          node --check src/aiBridge.js
           node test_local.mjs
           node test_banter_hub.mjs
       - name: Deploy Worker vantsbot a Cloudflare (solo main con CLOUDFLARE_API_TOKEN)
@@ -32,6 +33,7 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: 8f2424e95fec4860e19257226f209fbc
           PAGERDUTY_ROUTING_KEY: ${{ secrets.PAGERDUTY_ROUTING_KEY }}
           DD_API_KEY: ${{ secrets.DD_API_KEY }}
+          VANTS_INTERNAL_SECRET: ${{ secrets.VANTS_INTERNAL_SECRET }}
         run: |
           if [ -z "$CLOUDFLARE_API_TOKEN" ]; then
             echo "::warning::Configura el secret CLOUDFLARE_API_TOKEN en VANTSGAMES/vantsbot-cf para habilitar auto-deploy."
@@ -43,6 +45,9 @@ jobs:
           fi
           if [ -n "$DD_API_KEY" ]; then
             printf '%s' "$DD_API_KEY" | npx -y wrangler@4 secret put DD_API_KEY
+          fi
+          if [ -n "$VANTS_INTERNAL_SECRET" ]; then
+            printf '%s' "$VANTS_INTERNAL_SECRET" | npx -y wrangler@4 secret put VANTS_INTERNAL_SECRET
           fi
           sleep 5
           curl -fsS -A "Mozilla/5.0 (compatible; VANTSHealthCheck/1.0; +https://vants.cc)" https://bot.vants.cc/banter/estado

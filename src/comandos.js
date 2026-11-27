@@ -348,7 +348,7 @@ export function reglas() {
 export async function soporte(env, body) {
   const pregunta = (body?.data?.options ?? []).find((o) => o.name === 'pregunta')?.value;
   if (pregunta && String(pregunta).trim()) {
-    return soporteIA(env, String(pregunta).trim());
+    return soporteIA(env, String(pregunta).trim(), body);
   }
   let canalStaff = null;
   try {

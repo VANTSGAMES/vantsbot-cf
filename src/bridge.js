@@ -23,6 +23,7 @@
 // ============================================
 import { createHash } from 'node:crypto';
 import { txt, dapi, abrirDM, dbRun, dbFirst, embedBase, campo, esStaff, PERM } from './util.js';
+import { comandoIaCore } from './aiBridge.js';
 
 const TIPOS_DM = new Set(['ENTITLEMENT_CREATE', 'ENTITLEMENT_UPDATE', 'APPLICATION_AUTHORIZED']);
 const DM_DUENO_DEFECTO = '1532612429295521930'; // dueño (mismo default que agent_bridge.py)
@@ -263,8 +264,11 @@ export async function agente(env, body) {
   return renderAgente(sub, res.data, res.status);
 }
 
-// ── 4) Soporte IA (web VANTS AI → POST /api/chat) ────────────────────────────
-export async function soporteIA(env, pregunta) {
+// ── 4) Soporte IA (VANTS Core AI primero, respaldo web VANTS AI) ─────────────
+export async function soporteIA(env, pregunta, body = null) {
+  const core = await comandoIaCore(env, body, pregunta).catch(() => null);
+  if (core) return core;
+
   const hq = String(env.AGENTE_HQ_URL || 'https://vants-ai.vercel.app').replace(/\/+$/, '');
   try {
     const r = await fetch(hq + '/api/chat', {

@@ -109,6 +109,19 @@ export const COMANDOS = [
     ],
   },
   {
+    name: 'scout',
+    description: 'Análisis de scouting y coaching con IA usando tus stats reales de VANTS',
+    options: [
+      {
+        name: 'nick',
+        description: 'Nick en VANTS (vacío = tu propia cuenta)',
+        type: 3,
+        required: false,
+        max_length: 40,
+      },
+    ],
+  },
+  {
     name: 'fabrica',
     description: 'Fábrica de software VANTS: Spec → Builder → Sol/Astra → Approver · pequeño → main, grande → PR',
     default_member_permissions: PERM_SERVIDOR,

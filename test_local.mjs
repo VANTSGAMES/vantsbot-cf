@@ -4,10 +4,12 @@ import { construir } from './src/index.js';
 import { _fab, fabricaBoton } from './src/fabrica.js';
 import { ia } from './src/openai.js';
 import { esStaff, PERM } from './src/util.js';
+import { comandoScout, comandoIaCore, botonAi } from './src/aiBridge.js';
+import { anunciarEventoBus } from './src/bus.js';
 
 const ESPERADOS = [
   'ayuda', 'perfil', 'ranking', 'torneos', 'eventos', 'calendario', 'planes',
-  'reglas', 'soporte', 'ia', 'fabrica', 'agente', 'vincular', 'vants', 'warn',
+  'reglas', 'soporte', 'ia', 'scout', 'fabrica', 'agente', 'vincular', 'vants', 'warn',
   'kick', 'ban', 'mute', 'unmute', 'clear', 'lock', 'unlock', 'informe',
 ];
 
@@ -40,6 +42,8 @@ console.assert(
   cmdIa.options[1].choices.map((c) => c.value).join(',') === 'nano,mini,sol,astra,terra,luna',
   'choices de modelo de /ia mal',
 );
+const cmdScout = COMANDOS.find((c) => c.name === 'scout');
+console.assert(cmdScout.options[0].name === 'nick' && cmdScout.options[0].required === false, 'scout nick mal');
 const fabrica = COMANDOS.find((c) => c.name === 'fabrica');
 console.assert(fabrica.options.map((o) => o.name).join(',') === 'nueva,estado,lista,cancelar', 'sub fabrica mal');
 console.assert(fabrica.options[0].options[0].name === 'idea' && fabrica.options[0].options[0].required === true, 'fabrica idea mal');
@@ -350,6 +354,89 @@ console.assert(String(rIa.embeds?.[0]?.footer?.text).includes('OpenAI') && !Stri
 
 globalThis.fetch = fetchReal; // restaurar red
 
+// ── VANTS Core AI Bridge (/scout, /ia core, botones ai:approve/reject, bus) ─
+{
+  const llamadasAi = [];
+  const fakeIntService = {
+    async fetch(req) {
+      const u = new URL(req.url);
+      const body = await req.json();
+      llamadasAi.push({ path: u.pathname, internal: req.headers.get('X-Vants-Internal'), body });
+      if (u.pathname === '/ai/scout/jugador') {
+        return new Response(JSON.stringify({
+          ok: true,
+          jugador: { pid: 'p1', nick: body.nick || 'Feis' },
+          reporte: {
+            performance_score: 88,
+            tier_sugerido: 'VANTS Pro',
+            rol_ideal: 'Entry Fragger',
+            fortalezas: ['HS% alto'],
+            areas_mejora: ['Utilidad'],
+            recomendacion_fichaje: 'Fichaje recomendado',
+          },
+          cuota: { restantes: 2 },
+        }), { status: 200 });
+      }
+      if (u.pathname === '/ai/dispatch') {
+        return new Response(JSON.stringify({
+          ok: true,
+          task_id: '11111111-2222-3333-4444-555555555555',
+          routing: { target_agent: 'community' },
+          response: 'Respuesta unificada de VANTS Core AI.',
+          requiere_aprobacion: false,
+        }), { status: 200 });
+      }
+      if (u.pathname.endsWith('/approve')) {
+        return new Response(JSON.stringify({ ok: true, ejecucion: { ejecutado: true } }), { status: 200 });
+      }
+      return new Response(JSON.stringify({ ok: false, error: 'no_encontrado' }), { status: 404 });
+    },
+  };
+  const envAi = {
+    DB: dbStaff,
+    VANTS_INT_SERVICE: fakeIntService,
+    VANTS_INTERNAL_SECRET: 'sec-interno-test-1234567890123456',
+  };
+
+  const rScout = await comandoScout(envAi, { member: { user: { id: 'u1' }, permissions: '0' }, data: { options: [{ name: 'nick', value: 'Feis' }] } });
+  console.assert(String(rScout.embeds?.[0]?.title).includes('Feis'), 'comandoScout embed mal');
+
+  const rCore = await comandoIaCore(envAi, { member: { user: { id: 'u1' }, permissions: '0' } }, '¿qué torneos hay?');
+  console.assert(String(rCore?.embeds?.[0]?.title).includes('community'), 'comandoIaCore title mal');
+
+  const rBtnNoStaff = await botonAi(envAi, { member: { user: { id: 'u2' }, permissions: '0', roles: [] }, data: { custom_id: 'ai:approve:11111111-2222-3333-4444-555555555555' } });
+  console.assert(rBtnNoStaff.tipo === 4 && String(rBtnNoStaff.data?.content).includes('staff'), 'botonAi gate staff mal');
+
+  const rBtnOk = await botonAi(envAi, { ...bodyStaff, data: { custom_id: 'ai:approve:11111111-2222-3333-4444-555555555555' } });
+  console.assert(rBtnOk.tipo === 6 && typeof rBtnOk.trabajo === 'function', 'botonAi staff tipo 6 mal');
+  const salBtn = await rBtnOk.trabajo();
+  console.assert(String(salBtn.embeds?.[0]?.title).includes('Aprobado'), 'botonAi trabajo aprobado mal');
+
+  // Evento ai.draft_created en bus.js adjunta botones ai:approve y ai:reject
+  let busPayload = null;
+  globalThis.fetch = async (_url, init) => {
+    busPayload = JSON.parse(init.body);
+    return { ok: true, status: 200, text: async () => '{}', json: async () => ({ id: 'msg1' }) };
+  };
+  const dbBus = {
+    prepare() {
+      return { bind: () => ({ first: async () => ({ channel_id: '999888777' }) }) };
+    },
+  };
+  const rBus = await anunciarEventoBus(
+    { DB: dbBus, DISCORD_BOT_TOKEN: 'tok' },
+    { type: 'ai.draft_created', source: 'vants-ai', data: { task_id: '11111111-2222-3333-4444-555555555555', title: 'Borrador B2B', message: 'Propuesta' } },
+  );
+  globalThis.fetch = fetchReal;
+  console.assert(rBus.enviado === true, 'anunciarEventoBus ai.draft_created mal');
+  const idsBus = busPayload?.components?.[0]?.components?.map((c) => c.custom_id) ?? [];
+  console.assert(
+    idsBus.includes('ai:approve:11111111-2222-3333-4444-555555555555')
+    && idsBus.includes('ai:reject:11111111-2222-3333-4444-555555555555'),
+    'anunciarEventoBus botones ai mal',
+  );
+}
+
 console.log(`OK: ${nombres.length} comandos → ${nombres.join(', ')}`);
 console.log('OK: handler del Worker construido');
 console.log('OK: 12 comandos de staff ocultos para miembros (default_member_permissions) + grupo /vants rol');
@@ -357,3 +444,4 @@ console.log('OK: esStaff (permiso de Discord O rol de staff en D1 O admin)');
 console.log('OK: máquina de la fábrica (espec → build → sol/ui → aprobación, plantillas, gates)');
 console.log('OK: regla del dueño (pequeño → main directo automático · grande → PR · rechazo → bucle rojo)');
 console.log('OK: /ia con cerebro dual (OpenAI primario · Claude respaldo · avisos legibles)');
+console.log('OK: VANTS Core AI bridge (/scout, /ia core, botones ai:approve/reject y eventos bus)');

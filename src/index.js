@@ -35,6 +35,7 @@ import { cicloBus, busPrueba } from './bus.js';
 import { ia } from './openai.js';
 import { fabricaComando, fabricaBoton } from './fabrica.js';
 import { rutasBanterHub, resumenBanter } from './banterHub.js';
+import { comandoScout, comandoIaCore, botonAi } from './aiBridge.js';
 
 const PRESUPUESTO_MS = 2200; // Discord exige respuesta < 3s; margen para el followup
 
@@ -70,7 +71,15 @@ async function procesarComando(body, env) {
     case 'planes': return planes(env);
     case 'reglas': return reglas();
     case 'soporte': return soporte(env, body);
-    case 'ia': return ia(env, body);
+    case 'scout': return comandoScout(env, body);
+    case 'ia': {
+      const pregunta = String((body?.data?.options ?? []).find((o) => o.name === 'pregunta')?.value ?? '').trim();
+      if (pregunta) {
+        const core = await comandoIaCore(env, body, pregunta);
+        if (core) return core;
+      }
+      return ia(env, body);
+    }
     case 'fabrica': return fabricaComando(env, body);
     case 'vincular': return vincularRiot(env, body);
     case 'agente': return agente(env, body);
@@ -335,13 +344,13 @@ export function construir(sobre = {}) {
       });
     }
 
-    // ── Botones (type 3 MESSAGE_COMPONENT): los de la fábrica /fabrica ──
+    // ── Botones (type 3 MESSAGE_COMPONENT): fábrica /fabrica y aprobaciones IA ──
     if (tipo === 3) {
       const customId = String(body?.data?.custom_id ?? '');
-      if (!customId.startsWith('fabrica:')) {
+      if (!customId.startsWith('fabrica:') && !customId.startsWith('ai:')) {
         return json({ type: 4, data: { flags: 64, content: 'Este botón es de una versión anterior del bot.' } });
       }
-      const res = await fabricaBoton(env, body).catch(
+      const res = await (customId.startsWith('ai:') ? botonAi(env, body) : fabricaBoton(env, body)).catch(
         (e) => ({ tipo: 4, data: { flags: 64, content: `Error del bot: ${txt(e?.message ?? e, 180)}` } }),
       );
       // Respuesta inmediata (error / ver estado) → efímera, sin frío.

@@ -137,6 +137,9 @@ const MAPA_EVENTOS = {
   'banter.request_created': { canales: ['staff', 'registros'], color: 0xfaa61a, emoji: '📥', titulo: 'Nueva solicitud Banter' },
   'banter.nitro_activated': { canales: ['registros', 'anuncios'], color: 0xeb459e, emoji: '⚡', titulo: 'Suscripción Banter Nitro' },
   'release.published': { canales: ['anuncios'], color: 0x57f287, emoji: '📦', titulo: 'Nueva versión disponible (WinGet)' },
+  'ai.draft_created': { canales: ['staff', 'logs'], color: 16426522, emoji: '🧠', titulo: 'Borrador IA pendiente de aprobación' },
+  'ai.report_ready': { canales: ['logs'], color: 5793266, emoji: '🎯', titulo: 'Reporte Scouting IA generado' },
+  'ai.task_reviewed': { canales: ['logs'], color: 5763719, emoji: '✅', titulo: 'Tarea IA revisada' },
 };
 const DEFECTO_EVENTO = { canales: ['anuncios'], color: ROJO, emoji: '📡', titulo: '' };
 
@@ -199,8 +202,19 @@ export async function anunciarEventoBus(env, ev) {
   const campos = camposDinamicos(data);
   if (campos.length) embed.fields = campos;
 
+  const components = tipo === 'ai.draft_created' && data.task_id
+    ? [{
+        type: 1,
+        components: [
+          { type: 2, style: 3, label: '✅ Aprobar y publicar', custom_id: `ai:approve:${data.task_id}` },
+          { type: 2, style: 4, label: '✖️ Rechazar', custom_id: `ai:reject:${data.task_id}` },
+        ],
+      }]
+    : undefined;
+
   const r = await dapi(token, 'POST', `/channels/${canalId}/messages`, {
     embeds: [embed],
+    ...(components ? { components } : {}),
     allowed_mentions: { parse: [] },
   });
   return { enviado: r.ok, canal: canalId, categoria: categoriaUsada, status: r.status, ...(r.ok ? {} : { motivo: `http:${r.status}` }) };
