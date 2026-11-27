@@ -17,11 +17,21 @@ async function llamarVantsAi(env, ruta, body, { discordId, staff = false }) {
       "X-Vants-Staff": staff ? "1" : "0",
     },
     body: JSON.stringify(body || {}),
+    signal: AbortSignal.timeout(55000),
   });
 
-  const res = await binding.fetch(req);
-  const data = await res.json().catch(() => null);
-  return { ok: res.ok, status: res.status, data };
+  try {
+    const res = await binding.fetch(req);
+    const data = await res.json().catch(() => null);
+    return { ok: res.ok, status: res.status, data };
+  } catch (err) {
+    const isTimeout = err?.name === "TimeoutError" || err?.name === "AbortError" || /timeout|aborted/i.test(String(err?.message || err));
+    return {
+      ok: false,
+      status: isTimeout ? 504 : 502,
+      data: { error: isTimeout ? "vants_ai_bridge_timeout" : String(err?.message || err).slice(0, 120) },
+    };
+  }
 }
 
 export async function comandoScout(env, body) {
