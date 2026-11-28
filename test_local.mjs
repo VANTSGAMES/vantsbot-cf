@@ -436,7 +436,7 @@ globalThis.fetch = fetchReal; // restaurar red
     'anunciarEventoBus botones ai mal',
   );
 
-  // Fase 4: evento tournament.dispute en bus.js enruta a #staff con embed rojo 🚨
+  // Fase 4/M2: evento tournament.dispute en bus.js enruta solo a #logs (para no duplicar el webhook directo de #staff)
   let disputePayload = null;
   const canalesConsultados = [];
   globalThis.fetch = async (_url, init) => {
@@ -449,7 +449,7 @@ globalThis.fetch = fetchReal; // restaurar red
         bind: (clave) => ({
           first: async () => {
             canalesConsultados.push(clave);
-            return clave === 'staff' ? { channel_id: '777666555' } : null;
+            return clave === 'logs' ? { channel_id: '777666555' } : null;
           },
         }),
       };
@@ -471,7 +471,7 @@ globalThis.fetch = fetchReal; // restaurar red
   );
   globalThis.fetch = fetchReal;
   console.assert(rDispute.enviado === true, 'anunciarEventoBus tournament.dispute mal');
-  console.assert(canalesConsultados[0] === 'staff', 'tournament.dispute debe priorizar staff');
+  console.assert(canalesConsultados.length === 1 && canalesConsultados[0] === 'logs', 'tournament.dispute debe enrutar solo a logs');
   console.assert(disputePayload?.embeds?.[0]?.color === 15158332, 'tournament.dispute color rojo mal');
   console.assert(String(disputePayload?.embeds?.[0]?.title).includes('Disputa escalada'), 'tournament.dispute titulo mal');
 }
