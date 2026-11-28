@@ -435,6 +435,45 @@ globalThis.fetch = fetchReal; // restaurar red
     && idsBus.includes('ai:reject:11111111-2222-3333-4444-555555555555'),
     'anunciarEventoBus botones ai mal',
   );
+
+  // Fase 4: evento tournament.dispute en bus.js enruta a #staff con embed rojo 🚨
+  let disputePayload = null;
+  const canalesConsultados = [];
+  globalThis.fetch = async (_url, init) => {
+    disputePayload = JSON.parse(init.body);
+    return { ok: true, status: 200, text: async () => '{}', json: async () => ({ id: 'msg-dispute-1' }) };
+  };
+  const dbDispute = {
+    prepare() {
+      return {
+        bind: (clave) => ({
+          first: async () => {
+            canalesConsultados.push(clave);
+            return clave === 'staff' ? { channel_id: '777666555' } : null;
+          },
+        }),
+      };
+    },
+  };
+  const rDispute = await anunciarEventoBus(
+    { DB: dbDispute, DISCORD_BOT_TOKEN: 'tok' },
+    {
+      type: 'tournament.dispute',
+      source: 'vants-ai',
+      data: {
+        torneo_id: 'copa-cs2',
+        torneo_nombre: 'Copa VANTS CS2',
+        autor: 'PlayerX',
+        consulta: 'El rival abusó de pausa ilegal',
+        motivo: 'Sospecha de abuso de pausa técnica',
+      },
+    },
+  );
+  globalThis.fetch = fetchReal;
+  console.assert(rDispute.enviado === true, 'anunciarEventoBus tournament.dispute mal');
+  console.assert(canalesConsultados[0] === 'staff', 'tournament.dispute debe priorizar staff');
+  console.assert(disputePayload?.embeds?.[0]?.color === 15158332, 'tournament.dispute color rojo mal');
+  console.assert(String(disputePayload?.embeds?.[0]?.title).includes('Disputa escalada'), 'tournament.dispute titulo mal');
 }
 
 console.log(`OK: ${nombres.length} comandos → ${nombres.join(', ')}`);
@@ -444,4 +483,4 @@ console.log('OK: esStaff (permiso de Discord O rol de staff en D1 O admin)');
 console.log('OK: máquina de la fábrica (espec → build → sol/ui → aprobación, plantillas, gates)');
 console.log('OK: regla del dueño (pequeño → main directo automático · grande → PR · rechazo → bucle rojo)');
 console.log('OK: /ia con cerebro dual (OpenAI primario · Claude respaldo · avisos legibles)');
-console.log('OK: VANTS Core AI bridge (/scout, /ia core, botones ai:approve/reject y eventos bus)');
+console.log('OK: VANTS Core AI bridge (/scout, /ia core, botones ai:approve/reject y eventos bus + tournament.dispute)');

@@ -140,6 +140,7 @@ const MAPA_EVENTOS = {
   'ai.draft_created': { canales: ['staff', 'logs'], color: 16426522, emoji: '🧠', titulo: 'Borrador IA pendiente de aprobación' },
   'ai.report_ready': { canales: ['logs'], color: 5793266, emoji: '🎯', titulo: 'Reporte Scouting IA generado' },
   'ai.task_reviewed': { canales: ['logs'], color: 5763719, emoji: '✅', titulo: 'Tarea IA revisada' },
+  'tournament.dispute': { canales: ['staff', 'logs'], color: 15158332, emoji: '🚨', titulo: 'Disputa escalada por Árbitro IA' },
 };
 const DEFECTO_EVENTO = { canales: ['anuncios'], color: ROJO, emoji: '📡', titulo: '' };
 
