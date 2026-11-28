@@ -5,7 +5,7 @@ const CHECKS = [
   {
     "id": "web",
     "label": "Web VANTS (vants.cc)",
-    "url": "https://vants.cc/api/gpr",
+    "url": "https://vants.cc/api/tournaments",
     "markers": [
       "\"ok\":true"
     ]

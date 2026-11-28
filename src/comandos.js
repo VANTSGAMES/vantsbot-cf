@@ -25,10 +25,6 @@ const TIPO_EMOJI = {
   comunidad: '🎉', evento: '📅',
 };
 
-// Canal de ValoTracker en el servidor (igual que commands/perfil.py)
-const URL_CANAL_VALOTRACKER =
-  'https://discord.com/channels/1546641331927908472/1546641332632817686';
-
 // Helper: opciones de la interaction
 function opcionesDe(body) {
   return (body?.data?.options ?? []);
@@ -147,13 +143,9 @@ export async function perfil(env, body) {
   e.footer = { text: `VANTS · ${webUrl(env)}` };
 
   const botones = [];
-  if (riotHandle) {
-    const enc = encodeURIComponent(riotHandle);
-    botones.push(['Stats en tracker.gg', `https://tracker.gg/valorant/profile/riot/${enc}`]);
-    botones.push(['Abrir ValoTracker', URL_CANAL_VALOTRACKER]);
-  }
   if (steamId) botones.push(['Perfil de Steam', `https://steamcommunity.com/profiles/${steamId}`]);
-  botones.push(['Perfil completo en la web', `${webUrl(env)}/perfil.html`]);
+  botones.push(['Gestionar cuentas (RSO)', `${webUrl(env)}/perfil/cuentas`]);
+  botones.push(['Perfil completo en la web', `${webUrl(env)}/perfil`]);
 
   return { embeds: [e], components: botonEnlaces(...botones) };
 }
@@ -378,99 +370,32 @@ export async function soporte(env, body) {
 }
 
 // ── /vincular riot ───────────────────────────────────────────────────────────────────────────
-// El gameName de Riot permite ESPACIOS (3-16 chars) — ej real: "Kick Feispla#000".
-// Por eso el nombre es [^#] (todo menos el separador); el trim() del input cubre los bordes.
-const RIOT_REGEX = /^[^#]{3,16}#[A-Za-z0-9]{3,5}$/;
-
-export async function vincularRiot(env, body) {
-  const data = body?.data ?? {};
-  const sub = (data.options ?? []).find((o) => o.name === 'riot');
-  const handle = String(sub?.options?.find((o) => o.name === 'nombre')?.value ?? '').trim();
-  const userId = String(body.member?.user?.id ?? body.user?.id ?? '');
-  const miembro = body.member;
-  const yo = body.member?.user ?? body.user;
-
-  if (!RIOT_REGEX.test(handle)) {
-    return { flags: 64, content: '❌ Formato inválido. Usa `Nombre#TAG` (ej: Player#1234 o Kick Feispla#000)' };
-  }
-
-  // Alta automática: si aún no existe ficha en VANTS para este Discord, se crea
-  // al momento (el Discord ES la cuenta VANTS). Antes esto mandaba a la web;
-  // ahora el comando basta y sobra.
-  let nueva = false;
-  let player;
-  try {
-    player = await dbFirst(
-      env,
-      'SELECT id, auth_user_id FROM players WHERE discord_user_id = ? LIMIT 1',
-      [userId],
-    );
-    if (!player) {
-      await dbRun(
-        env,
-        'INSERT INTO players (id, discord_user_id, auth_user_id, display_name, avatar_url, creado_at) '
-        + 'VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT (discord_user_id) DO NOTHING',
-        [crypto.randomUUID(), userId, `discord:${userId}`, nombreVisible(miembro, yo), avatarDe(yo), ahoraISO()],
-      );
-      player = await dbFirst(
-        env,
-        'SELECT id, auth_user_id FROM players WHERE discord_user_id = ? LIMIT 1',
-        [userId],
-      );
-      nueva = Boolean(player);
-    }
-    // Fila vieja sin usuario autenticado → backfill con la identidad de Discord
-    if (player && !player.auth_user_id) {
-      await dbRun(
-        env,
-        'UPDATE players SET auth_user_id = ?, display_name = COALESCE(display_name, ?), '
-        + 'avatar_url = COALESCE(avatar_url, ?) WHERE discord_user_id = ?',
-        [`discord:${userId}`, nombreVisible(miembro, yo), avatarDe(yo), userId],
-      );
-      player.auth_user_id = `discord:${userId}`;
-    }
-  } catch {
-    return { flags: 64, content: '❌ No se pudo guardar la cuenta ahora. Inténtalo de nuevo más tarde.' };
-  }
-  if (!player) {
-    return { flags: 64, content: '❌ No se pudo crear tu cuenta ahora. Inténtalo de nuevo más tarde.' };
-  }
-
-  try {
-    const dup = await dbFirst(
-      env,
-      "SELECT user_id FROM user_game_accounts WHERE game = 'riot' AND handle = ? AND user_id != ? LIMIT 1",
-      [handle, String(player.auth_user_id)],
-    );
-    if (dup) return { flags: 64, content: '❌ Ese Riot ID ya está vinculado a otra cuenta de VANTS.' };
-    await dbRun(
-      env,
-      "INSERT INTO user_game_accounts (user_id, game, handle, verified, updated_at) "
-      + "VALUES (?, 'riot', ?, 0, ?) "
-      + "ON CONFLICT (user_id, game) DO UPDATE SET handle = excluded.handle, verified = 0, verified_at = NULL, updated_at = excluded.updated_at",
-      [String(player.auth_user_id), handle, ahoraISO()],
-    );
-  } catch {
-    return { flags: 64, content: '❌ No se pudo guardar la cuenta ahora. Inténtalo de nuevo más tarde.' };
-  }
-
-  const enc = encodeURIComponent(handle);
+// Cumplimiento Riot Games Developer Policies: la vinculación de cuentas de Riot
+// se realiza exclusivamente con consentimiento explícito (opt-in) mediante Riot Sign On (RSO).
+export async function vincularRiot(env) {
+  const W = webUrl(env);
   const e = embedBase(
-    '✅ Cuenta de Riot vinculada a VANTS',
-    `**${handle}** quedó guardada en tu perfil VANTS. `
-    + 'Para ver tus stats de ranked, vincula también la misma cuenta en ValoTracker.',
+    '🔐 Vinculación oficial con Riot Sign On (RSO)',
+    'Para cumplir con las políticas de privacidad y seguridad de Riot Games, las cuentas de Riot / VALORANT '
+    + 'solo se vinculan mediante **Riot Sign On (RSO)** con consentimiento explícito (opt-in) desde tu perfil web.',
   );
-  if (nueva) {
-    campo(e, '🎉 Bienvenido', 'Tu ficha de jugador se creó al momento con este comando. Ya formas parte del circuito.');
-  }
-  campo(e, '📌 Siguiente paso', 'Usa `/link` del bot **ValoTracker** con el mismo Riot ID.');
-  e.footer = { text: 'VANTS · vants.cc' };
+  campo(
+    e,
+    '📌 Estado actual',
+    'Conexión oficial con Riot Sign On en revisión. Cuando esté activa podrás autorizar (opt-in) y desvincular (opt-out) tu cuenta al instante.',
+  );
+  campo(
+    e,
+    '🛡️ Privacidad garantizada',
+    'Nunca mostramos estadísticas de VALORANT sin consentimiento previo y puedes eliminar tus datos en caché cuando quieras desde **Mis cuentas**.',
+  );
+  e.footer = { text: `VANTS · ${W}` };
   return {
     flags: 64,
     embeds: [e],
     components: botonEnlaces(
-      ['Ver stats en tracker.gg', `https://tracker.gg/valorant/profile/riot/${enc}`],
-      ['Ir a #valorant-stats', URL_CANAL_VALOTRACKER],
+      ['Gestionar en Mis cuentas (RSO)', `${W}/perfil/cuentas`],
+      ['Política de Privacidad', `${W}/privacidad`],
     ),
   };
 }
